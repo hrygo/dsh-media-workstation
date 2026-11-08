@@ -84,9 +84,20 @@
 | aud_mm_music3_default | 是 | 0 |
 | aud_ace15xl_draft | 是 | 0 |
 
-出图冒烟：img_default_2k，set_workflow_slot 改 459.prompt 后 run_workflow(wait=false) 提交，prompt_id = d37a2b76-bfff-4e63-9af9-bece79accf1d；/queue 确认 queue_running 就是该任务。首次运行含权重冷加载，耗时显著高于热跑，属于正常现象。
+出图冒烟（已完成）：img_default_2k，set_workflow_slot 改 459.prompt 后 run_workflow(wait=false) 提交，prompt_id = d37a2b76-bfff-4e63-9af9-bece79accf1d。
 
-产物：略（本仓不入库媒体）。取件走 fetch_outputs 到项目 assets。
+| 项 | 结果 |
+|---|---|
+| 状态 | completed，error = null |
+| 输出 | qwen_base_2k_00001.png（output/image/current 子目录） |
+| 尺寸 / 像素格式 | 2048 x 2048 / rgba |
+| 体积 | 3.7 MB |
+| 端到端耗时 | 约 20 分钟（首次运行含权重冷加载，热跑显著更快） |
+| 取件 | fetch_outputs(prompt_id, out_dir=...) 自动按 URL 拉取并落盘 |
+
+画面与 prompt 一致（灰色影棚背景、方台 + 哑光球体、底部色卡条），说明 TE + int8 DiT + VAE 链路正常。
+
+注意：生成物可能落在 output/image/current 这类子目录，不在 output 根目录；直接用 fetch_outputs 取，不要靠 ls 猜。
 
 ## 未纳入自动验证
 

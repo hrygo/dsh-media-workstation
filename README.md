@@ -16,7 +16,7 @@
 | Remotion 动效 | 通过 | HeroTitle / EndTag / TitledVideo(含 props) |
 | SpeechRail TTS / ASR | 通过 | quality/quality；同步 synthesize + transcribe（含时间戳、说话人） |
 | ComfyUI 工作流（9 份） | 通过（live validate 9/9） | comfy-cli 1.22.0，ComfyUI 0.44.2，MPS，8188 |
-| 2K 图像出图 | 已提交并执行 | img_default_2k prompt_id 见 docs/07-verification.md（首次运行含权重冷加载） |
+| 2K 图像出图 | 通过 | img_default_2k → 2048x2048 rgba PNG，约 20 分钟（含权重冷加载），prompt_id 见 docs/07-verification.md |
 | 图像 provider（openai-compat） | 通过 | gpt-image-2.5-flare 出图（尺寸需后续对齐） |
 
 未纳入自动验证的部分（必须人工确认）：听感与音乐性、配音自然度、版式审美、口型一致性。技术指标通过不等于这些通过。

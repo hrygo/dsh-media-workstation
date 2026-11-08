@@ -51,6 +51,9 @@
        job(action="wait", prompt_id=..., timeout_seconds=...)   # 或 status 轮询
        fetch_outputs(prompt_id=..., out_dir=<project>/assets)
 
+   生成物可能落在 output/image/current 之类的子目录（SaveImageAdvanced 带 subfolder），
+   不要 ls output 根目录去找；fetch_outputs 会按任务 URL 直接拉取。
+
 7. 验收
 
        ffprobe / media_probe 核对真实宽高、帧率、时长、音轨
