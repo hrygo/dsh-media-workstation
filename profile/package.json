@@ -1,0 +1,16 @@
+{
+  "name": "dsh-profile-media",
+  "private": true,
+  "dependencies": {
+    "@hrygo/dsh-ptc-tool-search": "file:/Users/hrygo/.dsh/profiles/media/vendor/hrygo-dsh-ptc-tool-search-0.1.1.tgz"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@hrygo/dsh-ptc-tool-search"
+      ]
+    }
+  }
+}

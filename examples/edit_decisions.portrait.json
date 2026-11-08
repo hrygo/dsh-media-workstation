@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "render_runtime": "ffmpeg",
+  "composition_mode": "cuts",
+  "renderer_family": "ffmpeg",
+  "cuts": [
+    { "id": "c1", "source": "$PROJECT/assets/clip_a.mp4", "in_seconds": 0.5, "out_seconds": 2.5,
+      "transform": { "scale": 1.0, "position": "center" } }
+  ],
+  "metadata": { "compose_target": { "width": 1080, "height": 1920, "fit": "cover" } }
+}

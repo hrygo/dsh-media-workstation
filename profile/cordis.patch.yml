@@ -1,0 +1,257 @@
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      cliproxyapi:
+        displayName: CLIProxyAPI · Chat
+        apiKeyEnv: CLIPROXYAPI_API_KEY
+        api: openai-completions
+        baseURL: http://127.0.0.1:8317/v1
+        compat:
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+        models:
+          - id: gemini-3.5-flash-lite
+            name: Gemini 3.5 Flash Lite
+            contextWindow: 1048576
+            maxTokens: 32768
+            input:
+              - text
+          - id: gemini-3.8-flash-high
+            name: Gemini 3.8 Flash
+            contextWindow: 1048576
+            maxTokens: 32768
+            input:
+              - text
+          - id: megacube-qwen36-35b-nvfp4
+            name: Qwen3.6 35B NVFP4
+            contextWindow: 204800
+            maxTokens: 32768
+            input:
+              - text
+          - id: omlx-kat-coder-2.5
+            name: omlx-kat-coder-2.5
+            contextWindow: 204800
+            maxTokens: 32768
+            input:
+              - text
+          - id: omlx-qwen3.6-35b-a3b
+            name: omlx-qwen3.6-35b-a3b
+            contextWindow: 204800
+            maxTokens: 32768
+            input:
+              - text
+          - id: omlx-qwen3.8-27b-mlx
+            name: omlx-qwen3.8-27b-mlx
+            contextWindow: 204800
+            maxTokens: 32768
+            input:
+              - text
+          - id: opencode-go-ds-flash
+            name: opencode-go-ds-flash
+            contextWindow: 350000
+            maxTokens: 32768
+            input:
+              - text
+          - id: opencode-go-glm53-flash
+            name: opencode-go-glm53-flash
+            contextWindow: 350000
+            maxTokens: 32768
+            input:
+              - text
+          - id: opencode-go-mimo26-flash
+            name: opencode-go-mimo26-flash
+            contextWindow: 1048576
+            maxTokens: 32768
+            input:
+              - text
+          - id: opencode-go-mimo26-pro
+            name: opencode-go-mimo26-pro
+            contextWindow: 1048576
+            maxTokens: 32768
+            input:
+              - text
+          - id: opencode-go-qwen38-flash
+            name: opencode-go-qwen38-flash
+            contextWindow: 350000
+            maxTokens: 32768
+            input:
+              - text
+          - id: qwen-ds41-flash
+            name: qwen-ds41-flash
+            contextWindow: 350000
+            maxTokens: 32768
+            input:
+              - text
+      cliproxyapi-responses:
+        displayName: CLIProxyAPI · Responses
+        apiKeyEnv: CLIPROXYAPI_API_KEY
+        api: openai-responses
+        baseURL: http://127.0.0.1:8317/v1
+        models:
+          - id: gpt-6-astra
+            name: GPT 6.0 Astra
+            contextWindow: 358400
+            maxTokens: 32768
+            input:
+              - text
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+          - id: gpt-6-luna
+            name: GPT 6.0 Luna
+            contextWindow: 358400
+            maxTokens: 32768
+            input:
+              - text
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+          - id: gpt-6.1-sol
+            name: GPT 6.1 Sol
+            contextWindow: 358400
+            maxTokens: 32768
+            input:
+              - text
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+          - id: opencode-go-muse-spark-1.3
+            name: Muse Spark 1.3 Contributor (Go)
+            contextWindow: 1048576
+            maxTokens: 32768
+            input:
+              - text
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: cliproxyapi-responses
+    model: gpt-6.1-sol
+- id: locale
+  name: "@deepseek-ai/dsh-client-locale"
+  config:
+    preference: zh
+- id: agent-preset-registry
+  config:
+    default: media
+    selectedDefault: media
+- id: webserver
+  config:
+    host: 127.0.0.1
+    port: 3088
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
+- insert:
+    - id: mcp-comfyui
+      name: "@deepseek-ai/dsh-mcp-client"
+      config:
+        serverName: comfyui
+        transport: stdio
+        command: /Users/hrygo/.comfy-mcp/venv/bin/comfy-mcp
+        env:
+          COMFY_BIN: /Users/hrygo/.comfy-mcp/venv/bin/comfy
+        toolCallTimeoutMs: 60000
+        failOnStartupError: true
+    - id: mcp-speechrail
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: speechrail
+        transport: stdio
+        command: /Users/hrygo/.local/bin/speechrail-mcp
+        env:
+          SPEECHRAIL_BASE_URL: http://127.0.0.1:8201/v1
+        toolCallTimeoutMs: 300000
+        failOnStartupError: true
+    - id: mcp-imagehive
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: imagehive
+        transport: stdio
+        command: /opt/homebrew/bin/node
+        args:
+          - /Users/hrygo/.dsh/adapters/imagehive-legacy-mcp.mjs
+        env:
+          IMAGEHIVE_HOME: /Users/hrygo/Library/Application Support/ImageHive
+          IMAGEHIVE_DAEMON_BIN: /Users/hrygo/.local/share/imagehive/bin/imagehived
+        toolCallTimeoutMs: 300000
+        failOnStartupError: true
+    - id: preset-media
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: media
+        order: 0
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: 你是由 {{model}} 驱动的本机影音创作助手。先明确交付规格，复用已验证工作流，区分技术验收与人工审美验收。
+              suffix: |-
+                本 profile 为 media。开始影音任务先读取 media-workbench 技能，并按需要读取 speechrail 技能。ComfyUI 使用 mcp__comfyui__ 工具；SpeechRail 负责语音、ImageHive 负责独立生图与编辑、FFmpeg/FFprobe 负责媒体检查与合成。MCP 调用参数和工具名以当前发现结果为准。工具发现使用 tool_search；不得杜撰参数。
+                ComfyUI 已由 Desktop 管理，禁止另起实例、重启、清空队列或自动卸载模型。所有渲染先验证工作流，异步提交，记录 prompt_id 后短查状态；超时、断线或未知状态先查询原任务，禁止自动重投。默认只提交一路重渲染；串行安排 ComfyUI、ImageHive、SpeechRail 重推理，跨客户端并发无法由本 profile 保证。
+                工作流优先 /Users/hrygo/ComfyUI-Shared/workflows/active，参数与 MPS 规则以 /Users/hrygo/ComfyUI-Installs/agent-tools-setup/MODELS.md 为准。先读取创作目录 AGENTS.md；不得直接修改发布母版。正式 2K 不用低清放大冒充。
+                SpeechRail 首次调用 describe；jobs.spool_ready/runner_active 未就绪时只使用同步能力并明确限制，不承诺跨重启恢复。仅采用实际可用音色，正式克隆声音需通过输出验证。
+                FFmpeg 创建新文件使用 -n，先 ffprobe 输入，核对映射、时长、画面、音轨和字幕；不得默认覆盖源文件或改变画质规格。输出保留独立任务目录及清单，再用 present 交付。图像预览、媒体规格通过不代表视频全帧、听感、口型或音乐性验收通过。
+                不自动安装节点、下载模型、使用付费云节点或上传素材。若对话模型在远端，仅推理工具本地，并不意味着提示词或图像上下文不离机。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              includeDefaultRoots: false
+              customSkillDirs:
+                - /Users/hrygo/.dsh/profiles/media/skills
+              watch: true
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-presentation
+            name: '@deepseek-ai/dsh-agent-tool-presentation'
+            config:
+              mode: ptc
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1

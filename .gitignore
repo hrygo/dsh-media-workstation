@@ -1,0 +1,12 @@
+node_modules/
+vendor/
+.plugin-manager/
+checks/
+*.log
+.DS_Store
+*.bak-presetfix-*
+renders/
+previews/
+output/
+assets/
+artifacts/

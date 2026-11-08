@@ -1,0 +1,96 @@
+diff --git a/schemas/artifacts/edit_decisions.schema.json b/schemas/artifacts/edit_decisions.schema.json
+index 06943eb..cf9c6f3 100644
+--- a/schemas/artifacts/edit_decisions.schema.json
++++ b/schemas/artifacts/edit_decisions.schema.json
+@@ -157,7 +157,7 @@
+       "type": "object",
+       "properties": {
+         "enabled": { "type": "boolean" },
+-        "style": { "type": "string", "description": "Display style: sentence, word-by-word, karaoke" },
++        "style": { "oneOf": [{ "type": "string", "description": "Display style: sentence, word-by-word, karaoke" }, { "type": "object", "description": "ASS style overrides consumed by video_compose (font, font_size, color, margin_v, alignment, ...)" }] },
+         "source": { "type": "string", "description": "Path to subtitle file or asset ID" },
+         "font": { "type": "string" },
+         "font_size": { "type": "integer" },
+@@ -196,7 +196,7 @@
+     },
+     "renderer_family": {
+       "type": "string",
+-      "enum": ["explainer-data", "explainer-teacher", "cinematic-trailer", "documentary-montage", "product-reveal", "screen-demo", "presenter", "animation-first"],
++      "enum": ["explainer-data", "explainer-teacher", "cinematic-trailer", "documentary-montage", "product-reveal", "screen-demo", "presenter", "animation-first", "ffmpeg"],
+       "description": "Locked at proposal stage — creative grammar for this deliverable. Preserved from proposal_packet; edit MUST NOT change without a logged decision."
+     },
+     "render_runtime": {
+@@ -206,7 +206,7 @@
+     },
+     "composition_mode": {
+       "type": "string",
+-      "enum": ["templated", "atelier"],
++      "enum": ["templated", "atelier", "cuts"],
+       "description": "Locked at proposal — HOW the composition is built. Edit MUST carry forward unchanged. 'atelier' routes video_compose to _render_via_atelier (no cut-schema, no stock registry); requires `bespoke` block below."
+     },
+     "bespoke": {
+diff --git a/tools/video/video_compose.py b/tools/video/video_compose.py
+index d5066e3..bfc3f01 100644
+--- a/tools/video/video_compose.py
++++ b/tools/video/video_compose.py
+@@ -442,6 +442,7 @@ class VideoCompose(BaseTool):
+                 "-c:v", "copy",
+                 "-c:a", "aac",
+                 "-b:a", "192k",
++                "-ar", "48000",
+                 "-af", "apad",
+                 "-shortest",
+                 "-movflags", "+faststart",
+@@ -723,7 +724,7 @@ class VideoCompose(BaseTool):
+                 # Use type-based selectors (0:v, 1:a) instead of index-based
+                 # (0:v:0) because source videos may have audio as stream 0
+                 # and video as stream 1 (e.g. Kling-generated clips).
+-                cmd.extend(["-map", "0:v", "-map", "1:a", "-c:a", "aac", "-shortest"])
++                cmd.extend(["-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-shortest"])
+             else:
+                 cmd.extend(["-c:a", "copy"])
+ 
+@@ -2984,12 +2985,38 @@ class VideoCompose(BaseTool):
+                 bg = colors["background"]
+                 resolved["back_color"] = bg
+ 
+-        # Layer 2: edit_decisions subtitle style
++        # Layer 2: edit_decisions subtitle style. The published schema documents
++        # subtitles.style as a *string* (sentence/word-by-word/karaoke) while this
++        # resolver wants a style dict, so accept both shapes and also map the
++        # schema-level typography fields (font/font_size/color/outline/background/
++        # position). Reading a string with .items() used to crash the whole render.
+         if edit_decisions:
+-            ed_style = edit_decisions.get("subtitles", {}).get("style", {})
+-            for k, v in ed_style.items():
+-                if v is not None:
+-                    resolved[k] = v
++            subs = edit_decisions.get("subtitles") or {}
++            ed_style = subs.get("style")
++            if isinstance(ed_style, dict):
++                for k, v in ed_style.items():
++                    if v is not None:
++                        resolved[k] = v
++            if subs.get("font"):
++                resolved["font"] = subs["font"]
++            if subs.get("font_size"):
++                resolved["font_size"] = subs["font_size"]
++            if subs.get("color"):
++                resolved["primary_color"] = subs["color"]
++            if subs.get("outline_color"):
++                resolved["outline_color"] = subs["outline_color"]
++            if subs.get("background"):
++                resolved["back_color"] = subs["background"]
++            position_alignment = {
++                "top-center": 8,
++                "top": 8,
++                "center": 5,
++                "middle": 5,
++                "bottom-center": 2,
++                "bottom": 2,
++            }.get(str(subs.get("position") or "").strip().lower())
++            if position_alignment:
++                resolved["alignment"] = position_alignment
+ 
+         # Layer 3: Explicit override (highest priority)
+         if explicit_style:

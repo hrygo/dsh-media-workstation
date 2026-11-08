@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "render_runtime": "ffmpeg",
+  "composition_mode": "cuts",
+  "renderer_family": "ffmpeg",
+  "cuts": [
+    { "id": "c1", "source": "$PROJECT/assets/clip_a.mp4", "in_seconds": 0.0, "out_seconds": 3.0, "reason": "opening" },
+    { "id": "c2", "source": "$PROJECT/assets/clip_b.mp4", "in_seconds": 0.5, "out_seconds": 3.5, "transition_in": "fade", "transition_duration": 0.4, "reason": "detail" }
+  ],
+  "subtitles": { "enabled": true, "source": "$PROJECT/artifacts/subs.srt", "position": "bottom-center", "font_size": 46 },
+  "metadata": { "compose_target": { "width": 1280, "height": 720, "fit": "pad" } }
+}

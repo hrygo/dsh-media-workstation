@@ -1,0 +1,24 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@hrygo/dsh-ptc-tool-search':
+        specifier: file:/Users/hrygo/.dsh/profiles/media/vendor/hrygo-dsh-ptc-tool-search-0.1.1.tgz
+        version: file:vendor/hrygo-dsh-ptc-tool-search-0.1.1.tgz
+
+packages:
+
+  '@hrygo/dsh-ptc-tool-search@file:vendor/hrygo-dsh-ptc-tool-search-0.1.1.tgz':
+    resolution: {integrity: sha512-1zqvPA0uJw+qEwiqlVNat9tQyoU93hzOF+DrzHUjlujG6E2jHETv+FcE7yrAV6tLTrFsMUNu11yO+wYw31utuw==, tarball: file:vendor/hrygo-dsh-ptc-tool-search-0.1.1.tgz}
+    version: 0.1.1
+    engines: {dsh: 0.2.1-rc.2, node: '>=24'}
+
+snapshots:
+
+  '@hrygo/dsh-ptc-tool-search@file:vendor/hrygo-dsh-ptc-tool-search-0.1.1.tgz': {}

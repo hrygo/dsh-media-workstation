@@ -1,0 +1,257 @@
+--- /Users/hrygo/.dsh/profiles/media/bin/om_cli.py.bak-presetfix-1794109571026	2026-11-08 11:46:11
++++ /Users/hrygo/.dsh/profiles/media/bin/om_cli.py	2026-11-08 11:46:44
+@@ -108,6 +108,99 @@
+     return 0 if found else 1
+ 
+ 
++_SCHEMA_PATH = OM_HOME / "schemas" / "artifacts" / "edit_decisions.schema.json"
++
++
++def _duration_seconds(path: Path) -> float:
++    try:
++        info = _ffprobe(path)
++        return float(((info.get("format") or {}).get("duration")) or 0.0)
++    except Exception:  # noqa: BLE001
++        return 0.0
++
++
++def _apply_schema_check(out: dict, composition: Path) -> None:
++    """Enforce the published edit_decisions JSON Schema.
++
++    composition_validator only inspects assets/durations/overlaps; without this
++    a misspelled optional field (transition instead of transition_in) validated
++    clean and silently did nothing, and an illegal enum rendered anyway.
++    """
++    data = out.setdefault("data", {})
++    try:
++        document = json.loads(composition.read_text(encoding="utf-8"))
++    except Exception as exc:  # noqa: BLE001
++        data.setdefault("errors", []).append("Composition is not valid JSON: " + str(exc))
++        out["success"] = False
++        return
++    if not _SCHEMA_PATH.is_file():
++        data.setdefault("warnings", []).append(
++            "schema 未找到（" + str(_SCHEMA_PATH) + "），跳过 schema 校验"
++        )
++        return
++    try:
++        from jsonschema import Draft202012Validator  # noqa: PLC0415
++    except Exception:  # noqa: BLE001
++        data.setdefault("warnings", []).append("jsonschema 不可用，跳过 schema 校验")
++        return
++    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
++    errors = data.setdefault("errors", [])
++    violations = sorted(
++        Draft202012Validator(schema).iter_errors(document),
++        key=lambda e: [str(p) for p in e.absolute_path],
++    )
++    for idx, err in enumerate(violations):
++        if idx >= 12:
++            errors.append("schema: 其余 " + str(len(violations) - 12) + " 条违反已省略")
++            break
++        where = "/".join(str(p) for p in err.absolute_path) or "<root>"
++        errors.append("schema 违反 " + where + ": " + err.message)
++    if violations:
++        out["success"] = False
++
++
++def _apply_narration_check(out: dict, composition: Path, assets_root) -> None:
++    """Warn when narration runs past the picture (its tail gets cut silently)."""
++    data = out.setdefault("data", {})
++    try:
++        doc = json.loads(composition.read_text(encoding="utf-8"))
++    except Exception:  # noqa: BLE001
++        return
++    picture = 0.0
++    for cut in doc.get("cuts") or []:
++        if not isinstance(cut, dict) or cut.get("layer", "primary") != "primary":
++            continue
++        try:
++            span = float(cut["out_seconds"]) - float(cut["in_seconds"])
++            speed = float(cut.get("speed") or 1.0) or 1.0
++        except (KeyError, TypeError, ValueError):
++            return
++        picture += span / speed
++    if picture <= 0:
++        return
++    segments = ((doc.get("audio") or {}).get("narration") or {}).get("segments") or []
++    for seg in segments:
++        if not isinstance(seg, dict) or not seg.get("asset_id"):
++            continue
++        raw = seg["asset_id"]
++        candidates = [Path(raw)]
++        if assets_root:
++            candidates.append(Path(assets_root) / raw)
++        candidates.append(composition.parent / raw)
++        path = next((c for c in candidates if c.is_file()), None)
++        if path is None:
++            continue
++        duration = _duration_seconds(path)
++        if duration <= 0:
++            continue
++        start = float(seg.get("start_seconds") or 0.0)
++        if start + duration > picture + 0.1:
++            data.setdefault("warnings", []).append(
++                "旁白超出画面: " + path.name + " 到 " + format(start + duration, ".2f")
++                + "s，画面只有 " + format(picture, ".2f") + "s，音尾会被截断"
++            )
++
++
+ def cmd_validate(args) -> int:
+     sys.path.insert(0, str(OM_HOME))
+     from tools.analysis.composition_validator import CompositionValidator  # noqa: PLC0415
+@@ -118,6 +211,8 @@
+     if args.assets_root:
+         inputs["assets_root"] = str(Path(args.assets_root).resolve())
+     out = _tool_result(CompositionValidator().execute(inputs))
++    _apply_schema_check(out, Path(args.composition).resolve())
++    _apply_narration_check(out, Path(args.composition).resolve(), args.assets_root)
+     if args.json:
+         print(json.dumps(out, ensure_ascii=False, indent=2))
+     else:
+@@ -167,11 +262,17 @@
+         return 1
+     if burn_after:
+         print(f"  烧录字幕: {burn_after}")
++        subs_block = edit.get("subtitles") or {}
++        try:
++            sub_size = int(subs_block.get("font_size") or 46)
++        except (TypeError, ValueError):
++            sub_size = 46
+         ns = argparse.Namespace(
+             video=str(Path(args.out).resolve()), srt=burn_after,
+-            out=str(Path(args.out).resolve()), font=None, size=46, margin=72,
++            out=str(Path(args.out).resolve()), font=None, size=sub_size, margin=72,
+             ass_font="PingFang SC", ass_size=0, no_native=False,
+             crf=args.crf, preset=args.preset,
++            position=str(subs_block.get("position") or ""),
+         )
+         return cmd_burn(ns)
+     return 0
+@@ -189,6 +290,16 @@
+     return re.search(rf"^\s*\S+\s+{re.escape(name)}\s", proc.stdout, re.M) is not None
+ 
+ 
++_POSITION_ALIGNMENT = {
++    "top-center": 8,
++    "top": 8,
++    "center": 5,
++    "middle": 5,
++    "bottom-center": 2,
++    "bottom": 2,
++}
++
++
+ def _ass_time(seconds: float) -> str:
+     h = int(seconds // 3600)
+     m = int((seconds % 3600) // 60)
+@@ -197,7 +308,7 @@
+ 
+ 
+ def _srt_to_ass(cues: list[dict], width: int, height: int, font: str, size: int,
+-                margin: int) -> str:
++                margin: int, alignment: int = 2) -> str:
+     """Write a real ASS file so libass uses pixel sizes, not the 288-line default."""
+     head = f"""[Script Info]
+ ScriptType: v4.00+
+@@ -208,7 +319,7 @@
+ 
+ [V4+ Styles]
+ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+-Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,2,0,2,{margin},{margin},{margin},1
++Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,2,0,{alignment},{margin},{margin},{margin},1
+ 
+ [Events]
+ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+@@ -224,11 +335,12 @@
+ 
+ def _burn_native(video: Path, srt: Path, out: Path, cue_list: list[dict], width: int,
+                  height: int, font: str, size: int, margin: int,
+-                 crf: int, preset: str) -> bool:
++                 crf: int, preset: str, alignment: int = 2) -> bool:
+     """Native libass burn from a generated ASS file."""
+     ass_path = out.parent / f".{out.stem}.ass"
+     ass_path.write_text(
+-        _srt_to_ass(cue_list, width, height, font, size, margin), encoding="utf-8"
++        _srt_to_ass(cue_list, width, height, font, size, margin, alignment),
++        encoding="utf-8",
+     )
+     cmd = [
+         "ffmpeg", "-y", "-loglevel", "error", "-i", str(video),
+@@ -289,6 +401,22 @@
+         return 1
+     print(f"OK {out}")
+     return 0
++
++
++def _audio_codec_args(out: Path) -> list[str]:
++    """Pick an audio encoder that matches the output container.
++
++    Hard-coding aac wrote a nonstandard stream whenever the target was a .wav,
++    which then failed to decode (decode_band_types) on the next pass.
++    """
++    ext = out.suffix.lower()
++    if ext in (".wav", ".aif", ".aiff", ".caf"):
++        return ["-c:a", "pcm_s16le", "-ar", "48000"]
++    if ext == ".mp3":
++        return ["-c:a", "libmp3lame", "-b:a", "192k", "-ar", "48000"]
++    if ext == ".flac":
++        return ["-c:a", "flac", "-ar", "48000"]
++    return ["-c:a", "aac", "-b:a", "192k", "-ar", "48000"]
+ 
+ 
+ def cmd_norm(args) -> int:
+@@ -318,8 +446,7 @@
+             f":offset={measured.get('target_offset')}:linear=true"
+         )
+     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
+-           "-af", filters, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+-           "-ar", "48000", str(out)]
++           "-af", filters, "-c:v", "copy", *_audio_codec_args(out), str(out)]
+     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+     if proc.returncode != 0:
+         print(f"响度归一失败: {proc.stderr.strip()[:600]}", file=sys.stderr)
+@@ -554,9 +681,12 @@
+ 
+     tmp_out = out.with_name(f".{out.stem}.burn{out.suffix}")
+ 
++    alignment = _POSITION_ALIGNMENT.get(
++        str(getattr(args, "position", "") or "").strip().lower(), 2
++    )
+     if not args.no_native and _has_filter("subtitles"):
+         if _burn_native(video, srt, tmp_out, cues, width, height, args.ass_font,
+-                        args.size, args.margin, args.crf, args.preset):
++                        args.size, args.margin, args.crf, args.preset, alignment):
+             os.replace(tmp_out, out)
+             print(f"OK {out}")
+             print(f"  字幕 {len(cues)} 条  模式 libass 原生（字号 {args.size}px）")
+@@ -615,6 +745,13 @@
+         cmd.append(f"--scale={args.scale}")
+     if args.frames:
+         cmd.append(f"--frames={args.frames}")
++    public_dir = getattr(args, "public_dir", None)
++    if public_dir:
++        resolved_public = Path(public_dir).resolve()
++        if not resolved_public.is_dir():
++            print(f"public 目录不存在: {resolved_public}", file=sys.stderr)
++            return 2
++        cmd.append(f"--public-dir={resolved_public}")
+     proc = subprocess.run(cmd, capture_output=True, text=True, check=False, cwd=str(composer))
+     if proc.returncode != 0:
+         print(f"渲染失败: {(proc.stderr or proc.stdout).strip()[:800]}", file=sys.stderr)
+@@ -701,6 +838,7 @@
+     p.add_argument("--margin", type=int, default=72)
+     p.add_argument("--crf", type=int, default=20)
+     p.add_argument("--preset", default="medium")
++    p.add_argument("--position", default="", help="top-center|center|bottom-center")
+     p.set_defaults(func=cmd_burn)
+ 
+     p = sub.add_parser("mix", help="人声与配乐侧链混音")
+@@ -733,6 +871,7 @@
+     p.add_argument("--props")
+     p.add_argument("--scale")
+     p.add_argument("--frames")
++    p.add_argument("--public-dir", help="Remotion public 目录（绝对路径素材需放这里）")
+     p.set_defaults(func=cmd_remotion)
+ 
+     p = sub.add_parser("doctor", help="环境自检")

@@ -1,0 +1,6 @@
+#!/bin/sh
+# om — OpenMontage bridge for the DSH media preset.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+export OPENMONTAGE_HOME="${OPENMONTAGE_HOME:-$HOME/OpenMontage}"
+exec "$OPENMONTAGE_HOME/.venv/bin/python" "$HERE/om_cli.py" "$@"

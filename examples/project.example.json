@@ -1,0 +1,12 @@
+{
+  "project": "<unique-project-name>",
+  "created_at": "2026-01-01T00:00:00Z",
+  "spec": { "target": "1920x1080", "fps": 30, "audio": "aac 48kHz", "loudness": "-14 LUFS / TP -1.5dB" },
+  "inputs": [],
+  "toolchain": { "ffmpeg": "9.x", "comfy_cli": "1.22.0", "speechrail_profile": "quality/quality" },
+  "workflows": [],
+  "params": { "seed": null, "steps": null },
+  "job_ids": { "comfy": [], "speechrail": [] },
+  "outputs": [],
+  "acceptance": { "technical": "pending", "manual_pending": ["听感", "口型", "版式审美"] }
+}
